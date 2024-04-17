@@ -385,6 +385,8 @@ docker run -d --network=host -e NODE_ENV=production maulik9898/knx-ws:latest
 
 This command will pull the `maulik9898/knx-ws:0.0.1` image from the Docker Hub registry and start the container in detached mode. It will also run the container in the host's network mode and set the `NODE_ENV` environment variable to `production`.
 
+Visit `http://localhost:5666` to open KNX testing page
+
 2. To stop the container, first find its ID or name using `docker ps`, and then run:
 
 ```
