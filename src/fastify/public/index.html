@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>KNX Test Page</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .element-card {
+      transition: background-color 0.5s;
+    }
+
+    .element-card.updated {
+      background-color: #c6f6d5;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100">
+  <div class="container mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-4">KNX Test Page</h1>
+    <button id="addElementBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded mb-4">
+      Add Element
+    </button>
+
+    <div id="elementList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </div>
+  <!-- Modal Dialog -->
+  <div id="elementDialog" class="fixed z-10 inset-0 overflow-y-auto hidden">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+
+      <div
+        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+        role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
+                Add Element
+              </h3>
+              <div class="mt-2">
+                <div class="mb-4">
+                  <label for="groupAddress" class="block text-gray-700 font-semibold mb-2">Group Address:</label>
+                  <input type="text" id="groupAddress"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                  <label for="type" class="block text-gray-700 font-semibold mb-2">Type:</label>
+                  <select id="type"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="read">Read</option>
+                    <option value="write">Write</option>
+                  </select>
+                </div>
+                <div id="dptField" class="mb-4 hidden">
+                  <label for="dpt" class="block text-gray-700 font-semibold mb-2">DPT:</label>
+                  <select id="dpt"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <optgroup label="DPT1 (1-bit)">
+                      <option value="DPT1.001">DPT1.001 (switch)</option>
+                    </optgroup>
+                    <optgroup label="DPT5 (8-bit unsigned value)">
+                      <option value="DPT5.001">DPT5.001 (percentage (0..100%))</option>
+                      <option value="DPT5.003">DPT5.003 (angle (degrees))</option>
+                      <option value="DPT5.004">DPT5.004 (percentage (0..255%))</option>
+                      <option value="DPT5.005">DPT5.005 (ratio (0..255))</option>
+                      <option value="DPT5.006">DPT5.006 (tariff (0..255))</option>
+                      <option value="DPT5.010">DPT5.010 (counter pulses (0..255))</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button id="addElementConfirm" type="button"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-500 text-base font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Add
+          </button>
+          <button id="addElementCancel" type="button"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // JavaScript code goes here
+    let websocket = null;
+    let readInterval = 5000; // Interval for read requests in milliseconds
+
+
+    // Function to show the element dialog
+    function showElementDialog() {
+      document.getElementById("elementDialog").classList.remove("hidden");
+    }
+
+    // Function to hide the element dialog
+    function hideElementDialog() {
+      document.getElementById("elementDialog").classList.add("hidden");
+    }
+
+    // Function to create a new element
+    function createElement() {
+      const groupAddress = document.getElementById("groupAddress").value;
+      const type = document.getElementById("type").value;
+
+      if (type === "read") {
+        createReadElement(groupAddress);
+      } else if (type === "write") {
+        const dpt = document.getElementById("dpt").value;
+        createWriteElement(groupAddress, dpt);
+      }
+
+      hideElementDialog();
+    }
+
+    // Function to create a read element
+    function createReadElement(groupAddress) {
+      const element = document.createElement("div");
+      element.classList.add("bg-white", "shadow-md", "rounded-md", "p-6", "element-card");
+      element.innerHTML = `
+        <p class="font-semibold mb-2">Group Address: ${groupAddress}</p>
+        <p class="mb-2">Type: Read</p>
+        <p>Current Value: <span id="value-${groupAddress}" class="font-bold"></span></p>
+        <button onclick="sendReadRequest('${groupAddress}')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-1 rounded">
+          Read
+        </button>
+      `;
+      document.getElementById("elementList").appendChild(element);
+
+      // Send initial read request to backend and update the current value
+      sendReadRequest(groupAddress);
+    }
+    // Function to send a read request to the backend
+    function sendReadRequest(groupAddress) {
+      fetch(`/api/knx/read?groupAddress=${groupAddress}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById(`value-${groupAddress}`).textContent = data.value;
+        });
+    }
+    // Function to create a write element
+    function createWriteElement(groupAddress, dpt) {
+      const element = document.createElement("div");
+      element.classList.add("bg-white", "shadow-md", "rounded-md", "p-4");
+      element.innerHTML = `
+        <p class="font-semibold mb-2">Group Address: ${groupAddress}</p>
+        <p class="mb-2">Type: Write</p>
+        <p class="mb-2">DPT: ${dpt}</p>
+        <div class="flex">
+          <input type="text" id="input-${groupAddress}" class="border border-gray-300 rounded-l-md px-2 py-1 flex-grow">
+          <button onclick="sendWriteRequest('${groupAddress}', '${dpt}')" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-1 rounded-r-md">
+            Send
+          </button>
+        </div>
+      `;
+      document.getElementById("elementList").appendChild(element);
+    }
+
+    // Function to send a write request to the backend
+    function sendWriteRequest(groupAddress, dpt) {
+      const value = document.getElementById(`input-${groupAddress}`).value;
+
+      fetch("/api/knx/write", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          operation: "write",
+          groupAddress: groupAddress,
+          value: value,
+          dpt: dpt
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log(data.message);
+        });
+    }
+
+    // Function to toggle the visibility of the DPT field based on the selected type
+    function toggleDptField() {
+      const type = document.getElementById("type").value;
+      const dptField = document.getElementById("dptField");
+
+      if (type === "write") {
+        dptField.classList.remove("hidden");
+      } else {
+        dptField.classList.add("hidden");
+      }
+    }
+
+
+    // Function to connect to the WebSocket
+    function connectWebSocket() {
+      websocket = new WebSocket(`ws://${window.location.host}/api/knx/ws`);
+
+
+      websocket.onopen = function () {
+        console.log("WebSocket connected");
+      };
+
+      websocket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        console.log("wsMessage ", data)
+        const groupAddress = data.destination;
+        const value = data.value;
+
+        const valueElement = document.getElementById(`value-${groupAddress}`);
+        if (valueElement) {
+          valueElement.textContent = value;
+
+          // Add "updated" class to the element card for visual indication
+          const elementCard = valueElement.closest(".element-card");
+          elementCard.classList.add("updated");
+
+          // Remove the "updated" class after a short delay
+          setTimeout(() => {
+            elementCard.classList.remove("updated");
+          }, 500);
+        }
+      };
+
+      websocket.onclose = function () {
+        console.log("WebSocket disconnected");
+        // Retry connecting after a delay
+        setTimeout(connectWebSocket, 5000);
+      };
+    }
+    // Function to start periodic read requests for all elements
+    function startPeriodicReads() {
+      const readElements = document.querySelectorAll(".element-card");
+      readElements.forEach(element => {
+        const groupAddress = element.querySelector("p:first-child").textContent.split(": ")[1];
+        setInterval(() => {
+          sendReadRequest(groupAddress);
+        }, readInterval);
+      });
+    }
+
+    window.addEventListener("load", connectWebSocket);
+
+    // Start periodic read requests when the page loads
+    window.addEventListener("load", startPeriodicReads);
+
+    // Add event listeners
+    document.getElementById("addElementBtn").addEventListener("click", showElementDialog);
+    document.getElementById("addElementConfirm").addEventListener("click", createElement);
+    document.getElementById("addElementCancel").addEventListener("click", hideElementDialog);
+    document.getElementById("type").addEventListener("change", toggleDptField);
+  </script>
+</body>
+
+</html>
