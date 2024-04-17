@@ -24,7 +24,7 @@
    - [Write Group Address](#write-group-address-example)
    - [Read Group Address](#read-group-address-example)
    - [WebSocket Communication](#websocket-communication-example)
-7. [Conclusion](#conclusion)
+7. [Usage](#usage)
 
 ## Introduction
 
@@ -370,5 +370,24 @@ Error Response:
      "value": false
    }
    ```
+## Usage
 
+The KNX backend is packaged as a Docker container and can be deployed using the Docker CLI directly.
+
+### Docker CLI
+
+
+1. Open a terminal and run the following command:
+
+```
+docker run -d --network=host -e NODE_ENV=production maulik9898/knx-ws:latest
+```
+
+This command will pull the `maulik9898/knx-ws:0.0.1` image from the Docker Hub registry and start the container in detached mode. It will also run the container in the host's network mode and set the `NODE_ENV` environment variable to `production`.
+
+2. To stop the container, first find its ID or name using `docker ps`, and then run:
+
+```
+docker stop <container_id_or_name>
+```
 
