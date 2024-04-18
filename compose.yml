@@ -2,9 +2,10 @@ version: '3.8'
 
 services:
   knx-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    image: maulik9898/knx-ws:latest
     network_mode: host
     environment:
       - NODE_ENV=production
