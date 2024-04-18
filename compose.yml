@@ -7,5 +7,6 @@ services:
     #   dockerfile: Dockerfile
     image: maulik9898/knx-ws:latest
     network_mode: host
+    restart: always
     environment:
       - NODE_ENV=production
