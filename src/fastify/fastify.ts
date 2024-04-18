@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from '@fastify/websocket';
-import {fastifyStatic } from '@fastify/static';
+import { fastifyStatic } from '@fastify/static';
 import { knxRouter } from "./router/knxRouter.js";
 import path, { dirname } from "path";
 import { fileURLToPath } from 'url';
@@ -17,7 +17,7 @@ app.register(cors, {
   origin: "*",
   methods: ["*"],
 });
-app.register(fastifyStatic , {
+app.register(fastifyStatic, {
   root: path.join(__dirname, 'public')
 })
 app.register(websocket.default)
@@ -28,7 +28,10 @@ export const startHttpServer = async () => {
   console.log(`Server is running on port ${port}`);
 
   try {
-    await app.listen({ port });
+    await app.listen({
+      host: "0.0.0.0",
+      port: port
+    });
   } catch (err) {
     app.log.error(err);
     process.exit(1);
